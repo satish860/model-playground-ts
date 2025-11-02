@@ -12,6 +12,7 @@ A playground for rapid experimentation with different AI models. Switch between 
 - 💭 **Chat** - Multi-turn conversations with context
 - 🤖 **Agents** - Tool calling and function execution
 - 🎯 **Classification** - Real-world ML task with RAG and Chain-of-Thought
+- 📄 **Summarization** - Long document summarization with progressive techniques
 
 Currently configured for **MiniMax M2**, but designed to work with any OpenRouter-supported model (Claude, GPT-4, Gemini, Llama, etc.).
 
@@ -111,6 +112,26 @@ python cot_classify.py      # RAG + CoT: ~95%+ accuracy
 - **RAG**: Retrieves 5 similar examples using vector embeddings
 - **CoT**: RAG + explicit step-by-step reasoning (shows model's thinking!)
 
+### Summarization Module
+
+Progressive techniques for condensing long documents:
+
+```bash
+cd summarization
+
+# Three approaches (Coming Soon):
+python simple_summarize.py    # Basic: Simple bullet-point summary
+python guided_summarize.py     # Structured: Guided field extraction
+python chunking_summarize.py   # Advanced: Meta-summarization with chunking
+```
+
+**What it does:** Summarizes lengthy legal documents (lease agreements) using different techniques:
+- **Simple**: Basic "summarize this" prompt
+- **Guided**: Structured extraction (parties, dates, obligations, clauses)
+- **Chunking**: Break document into chunks, summarize each, then synthesize (best for 50+ page docs)
+
+**Status:** ⏳ Roadmap created, implementation coming soon. See `summarization/ROADMAP.md` for detailed plan.
+
 ---
 
 ## 🧩 Project Structure
@@ -124,6 +145,9 @@ model-playground-ts/
 │   ├── rag_classify.py     # Vector RAG
 │   ├── cot_classify.py     # Chain-of-Thought
 │   └── data/               # Training/test data
+├── summarization/          # Document summarization module
+│   ├── ROADMAP.md          # Detailed implementation plan
+│   └── data/               # Lease documents (to be downloaded)
 ├── .env                    # API keys (create this)
 └── package.json            # Dependencies
 ```

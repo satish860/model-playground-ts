@@ -44,6 +44,11 @@ model-playground-ts/
 │   ├── cot_classify.py           # RAG + Chain-of-Thought (~95%+ accuracy)
 │   └── requirements.txt          # Module-specific dependencies
 │
+├── summarization/                # Document summarization module (in progress)
+│   ├── data/                     # Lease documents (to be downloaded)
+│   ├── ROADMAP.md                # Detailed implementation plan
+│   └── requirements.txt          # Module-specific dependencies (TBD)
+│
 ├── .env                          # API keys (not in git)
 └── package.json                  # TypeScript dependencies & scripts
 ```
@@ -89,6 +94,20 @@ cd classification
 python simple_classify.py   # Baseline: Simple prompts
 python rag_classify.py      # RAG with vector similarity
 python cot_classify.py      # RAG + Chain-of-Thought reasoning
+```
+
+### Summarization Module
+
+```bash
+cd summarization
+
+# Three approaches (Coming Soon):
+python simple_summarize.py    # Basic: Simple bullet-point summary
+python guided_summarize.py     # Structured: Guided field extraction
+python chunking_summarize.py   # Advanced: Meta-summarization with chunking
+
+# View roadmap:
+cat ROADMAP.md  # Detailed implementation plan
 ```
 
 ---
@@ -159,6 +178,31 @@ This thinking capability is leveraged in the classification module's Chain-of-Th
    - Accuracy: ~95%+
 
 **Data Source**: Claude Cookbook insurance ticket classification dataset (68 training, 68 test examples)
+
+### Summarization Module Architecture
+
+**Self-Contained Design**: The `summarization/` folder is independent with its own data and dependencies.
+
+**Three Progressive Approaches** (Planned):
+
+1. **Simple Summarization** (`simple_summarize.py`)
+   - Document → "Summarize this" → Summary
+   - Basic bullet-point summaries
+   - Fast but may miss important details
+
+2. **Guided Summarization** (`guided_summarize.py`)
+   - Document → Extract specific fields (parties, dates, obligations) → Structured Summary
+   - Domain-specific prompting for legal documents
+   - More consistent and comprehensive
+
+3. **Meta-Summarization (Chunking)** (`chunking_summarize.py`)
+   - Document → Split into chunks → Summarize each → Synthesize → Final Summary
+   - Best for very long documents (50+ pages)
+   - Handles documents exceeding context window
+
+**Data Source**: Claude Cookbook legal document summarization dataset (9 lease agreements with reference summaries)
+
+**Status**: Roadmap created, implementation in progress. See `summarization/ROADMAP.md` for detailed plan.
 
 ---
 
