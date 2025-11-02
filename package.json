@@ -1,0 +1,30 @@
+{
+  "name": "model-playground-ts",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "stream": "tsx src/stream.ts",
+    "structured": "tsx src/structured.ts",
+    "chat": "tsx src/chat.ts",
+    "agent": "tsx src/agent.ts",
+    "agent-simple": "tsx src/agent-simple.ts",
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/node": "^24.9.2",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@openrouter/ai-sdk-provider": "^1.2.0",
+    "ai": "^5.0.86",
+    "dotenv": "^17.2.3",
+    "zod": "^4.1.12"
+  }
+}
