@@ -17,182 +17,20 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from python.utils.config import Config
 
-
-# ============================================================================
-# DATA LOADING
-# ============================================================================
-
-# Global variable to cache documentation data
-_DOCS_DATA = None
-
-def load_docs_data():
-    """Load documentation data from JSON file (cached)."""
-    global _DOCS_DATA
-    if _DOCS_DATA is None:
-        data_path = os.path.join(os.path.dirname(__file__), 'data', 'anthropic_docs.json')
-        with open(data_path, 'r', encoding='utf-8') as f:
-            _DOCS_DATA = json.load(f)
-    return _DOCS_DATA
+# Import all tools from tools module
+from tools import chunk_grep, chunk_search, chunk_read, chunk_filter, load_docs_data
 
 
 # ============================================================================
-# REAL TOOL IMPLEMENTATIONS
+# TOOLS IMPORTED FROM tools/ FOLDER
 # ============================================================================
+# Tool implementations are in:
+# - tools/chunk_grep.py: Regex and exact phrase search
+# - tools/chunk_search.py: Keyword search
+# - tools/chunk_read.py: Read full chunk content
+# - tools/chunk_filter.py: Filter by patterns
+# - tools/data_loader.py: Load documentation data
 
-def chunk_search(query: str, case_sensitive: bool = False, search_in: str = "all", max_results: int = 10) -> str:
-    """Search documentation chunks by keyword.
-
-    Args:
-        query: Search query string
-        case_sensitive: Whether search is case sensitive
-        search_in: Where to search - "all", "heading", "text", "summary"
-        max_results: Maximum number of results to return
-
-    Returns:
-        JSON string with search results
-    """
-    print(f"  [TOOL EXECUTED] chunk_search(query='{query}', search_in='{search_in}', max={max_results})")
-
-    docs = load_docs_data()
-    results = []
-
-    # Prepare query for searching
-    search_query = query if case_sensitive else query.lower()
-    query_terms = search_query.split()
-
-    for idx, chunk in enumerate(docs):
-        # Prepare search fields
-        heading = chunk.get('chunk_heading', '')
-        text = chunk.get('text', '')
-        link = chunk.get('chunk_link', '')
-
-        if not case_sensitive:
-            heading = heading.lower()
-            text = text.lower()
-
-        # Determine what to search
-        if search_in == "heading":
-            search_text = heading
-        elif search_in == "text":
-            search_text = text
-        else:  # "all"
-            search_text = heading + " " + text
-
-        # Count matches for each query term
-        match_count = 0
-        for term in query_terms:
-            match_count += search_text.count(term)
-
-        if match_count > 0:
-            # Calculate match score (simple: matches / length of text)
-            match_score = min(1.0, match_count / max(1, len(search_text.split()) / 100))
-
-            # Extract snippet around first match
-            first_term = query_terms[0]
-            snippet_start = search_text.find(first_term)
-            if snippet_start != -1:
-                # Get context around match
-                snippet_start = max(0, snippet_start - 50)
-                snippet_end = min(len(text), snippet_start + 200)
-                snippet = "..." + text[snippet_start:snippet_end] + "..."
-            else:
-                snippet = text[:200] + "..."
-
-            results.append({
-                "chunk_id": idx,
-                "chunk_link": link,
-                "chunk_heading": chunk.get('chunk_heading', ''),
-                "snippet": snippet,
-                "match_count": match_count,
-                "match_score": round(match_score, 3)
-            })
-
-    # Sort by match score (descending) and limit results
-    results.sort(key=lambda x: x['match_score'], reverse=True)
-    results = results[:max_results]
-
-    result = json.dumps(results, indent=2)
-    print(f"  [TOOL RESULT] Found {len(results)} chunks")
-    return result
-
-
-def chunk_read(chunk_ids: list) -> str:
-    """Read full content of specific chunks.
-
-    Args:
-        chunk_ids: List of chunk IDs to read
-
-    Returns:
-        JSON string with full chunk contents
-    """
-    print(f"  [TOOL EXECUTED] chunk_read(chunk_ids={chunk_ids})")
-
-    docs = load_docs_data()
-    chunks = []
-
-    for chunk_id in chunk_ids:
-        if 0 <= chunk_id < len(docs):
-            chunk = docs[chunk_id]
-            chunks.append({
-                "chunk_id": chunk_id,
-                "chunk_link": chunk.get('chunk_link', ''),
-                "chunk_heading": chunk.get('chunk_heading', ''),
-                "text": chunk.get('text', '')
-            })
-        else:
-            chunks.append({
-                "chunk_id": chunk_id,
-                "error": f"Chunk ID {chunk_id} out of range (0-{len(docs)-1})"
-            })
-
-    result = json.dumps(chunks, indent=2)
-    print(f"  [TOOL RESULT] Read {len(chunks)} chunks")
-    return result
-
-
-def chunk_filter(heading_pattern: str = None, link_pattern: str = None) -> str:
-    """Filter chunks by heading or link pattern.
-
-    Args:
-        heading_pattern: Regex pattern to match against headings
-        link_pattern: Regex pattern to match against links
-
-    Returns:
-        JSON string with list of matching chunk IDs
-    """
-    print(f"  [TOOL EXECUTED] chunk_filter(heading='{heading_pattern}', link='{link_pattern}')")
-
-    docs = load_docs_data()
-    matching_ids = []
-
-    for idx, chunk in enumerate(docs):
-        heading = chunk.get('chunk_heading', '')
-        link = chunk.get('chunk_link', '')
-
-        # Check if chunk matches patterns
-        heading_match = True
-        link_match = True
-
-        if heading_pattern:
-            try:
-                heading_match = bool(re.search(heading_pattern, heading, re.IGNORECASE))
-            except re.error:
-                # Invalid regex pattern
-                heading_match = heading_pattern.lower() in heading.lower()
-
-        if link_pattern:
-            try:
-                link_match = bool(re.search(link_pattern, link, re.IGNORECASE))
-            except re.error:
-                # Invalid regex pattern
-                link_match = link_pattern.lower() in link.lower()
-
-        if heading_match and link_match:
-            matching_ids.append(idx)
-
-    result = json.dumps(matching_ids)
-    print(f"  [TOOL RESULT] Found {len(matching_ids)} matching chunks")
-    return result
 
 
 # ============================================================================
@@ -203,8 +41,38 @@ tools = [
     {
         "type": "function",
         "function": {
+            "name": "chunk_grep",
+            "description": "Grep-style search with regex and exact phrase matching. Use quotes for exact phrases (e.g., \"Add Test Case\"). Supports regex patterns. Best for finding specific terms or UI elements.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pattern": {
+                        "type": "string",
+                        "description": "Search pattern. Use quotes for exact phrases (\"exact phrase\") or regex patterns (eval.*tool)"
+                    },
+                    "case_sensitive": {
+                        "type": "boolean",
+                        "description": "Whether the search should be case sensitive (default: false)"
+                    },
+                    "search_in": {
+                        "type": "string",
+                        "enum": ["all", "heading", "text"],
+                        "description": "Where to search - all fields, just headings, or just text (default: all)"
+                    },
+                    "max_results": {
+                        "type": "integer",
+                        "description": "Maximum number of results to return (default: 10)"
+                    }
+                },
+                "required": ["pattern"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "chunk_search",
-            "description": "Search documentation chunks by keyword. Returns chunk previews with IDs, headings, snippets, and match scores.",
+            "description": "Search documentation chunks by keywords. Splits query into words and matches individually. Good for broad exploratory searches.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -272,6 +140,7 @@ tools = [
 
 # Map function names to actual functions
 available_functions = {
+    "chunk_grep": chunk_grep,
     "chunk_search": chunk_search,
     "chunk_read": chunk_read,
     "chunk_filter": chunk_filter
@@ -287,14 +156,24 @@ SYSTEM_PROMPT = """You are a helpful documentation search assistant.
 Your task: Answer questions about Claude documentation using the available tools.
 
 Tools:
-- chunk_search: Find chunks containing keywords (returns previews with IDs)
+- chunk_grep: Grep-style search for exact phrases or regex patterns
+  * Use for specific terms, product names, UI elements (e.g., "Add Test Case", "eval-tool")
+  * Supports quotes for exact matches: "exact phrase"
+  * Supports regex: eval.*tool
+  * Best for precise searches
+
+- chunk_search: Keyword search (splits query into words)
+  * Use for broad exploratory searches
+  * Good when you're not sure of exact terms
+
 - chunk_read: Read full content of specific chunks (use IDs from search)
 - chunk_filter: Filter chunks by heading/link patterns
 
 Strategy:
-1. Search for relevant keywords
-2. Read the most promising chunks (based on match scores and snippets)
-3. Provide a clear answer with source citations
+1. If question mentions specific product names, UI elements, or quoted terms → use chunk_grep
+2. For broad concept searches → use chunk_search
+3. Read the most promising chunks (based on match scores and snippets)
+4. Provide a clear answer with source citations
 
 Always cite your sources using chunk links from the documentation.
 """
