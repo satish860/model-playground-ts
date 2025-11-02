@@ -301,15 +301,71 @@ Always cite your sources using chunk links from the documentation.
 
 
 # ============================================================================
+# PLANNING PHASE
+# ============================================================================
+
+def create_plan(user_question: str) -> str:
+    """Create a search plan before executing agent loop.
+
+    This planning phase helps the agent:
+    - Understand the question intent
+    - Identify key concepts to search for
+    - Determine which documentation sections to target
+    - Plan search strategy
+
+    Args:
+        user_question: The user's question
+
+    Returns:
+        A search plan as string
+    """
+    client = Config.get_client()
+
+    planning_prompt = f"""You are planning how to answer a question about Claude documentation.
+
+Question: {user_question}
+
+Analyze this question and create a search plan. Consider:
+1. What is the user really asking? (e.g., UI walkthrough, API code, conceptual explanation, tutorial steps)
+2. What are the EXACT key phrases to search for? (extract important quoted terms, product names, feature names)
+3. Which documentation sections are most relevant? (e.g., "API reference", "tutorials", "eval-tool", "test-and-evaluate")
+4. Are there specific UI elements mentioned (buttons, forms, screens)?
+
+Provide a search plan with:
+- Intent: What type of answer is needed
+- Key search terms: 2-3 specific phrases to search for
+- Target section: Which docs section to focus on
+
+Example:
+Question: "How do I enable streaming in Claude API?"
+Plan:
+- Intent: API implementation method/code example
+- Key search terms: "streaming", "stream parameter", "API"
+- Target: API reference documentation
+
+Now create a plan for the given question:"""
+
+    response = client.chat.completions.create(
+        model=Config.MODEL_FREE,
+        messages=[{"role": "user", "content": planning_prompt}],
+        max_tokens=300
+    )
+
+    plan = response.choices[0].message.content
+    return plan
+
+
+# ============================================================================
 # AGENT LOOP
 # ============================================================================
 
-def run_agent(user_question: str, max_iterations: int = 5):
+def run_agent(user_question: str, max_iterations: int = 5, use_planning: bool = True):
     """Run documentation search agent.
 
     Args:
         user_question: The user's question about Claude documentation
         max_iterations: Maximum number of agent loop iterations
+        use_planning: Whether to use planning phase before search
 
     Returns:
         The agent's final answer
@@ -321,11 +377,32 @@ def run_agent(user_question: str, max_iterations: int = 5):
     print("=" * 80)
     print(f"Question: {user_question}")
     print(f"Max Iterations: {max_iterations}")
+    print(f"Planning: {'Enabled' if use_planning else 'Disabled'}")
     print("=" * 80)
     print()
 
+    # PLANNING PHASE (runs before the loop)
+    search_plan = None
+    if use_planning:
+        print(f"\n{'-'*80}")
+        print("PLANNING PHASE")
+        print(f"{'-'*80}")
+        search_plan = create_plan(user_question)
+        print(f"\nSearch Plan:\n{search_plan}")
+        print(f"\n{'-'*80}\n")
+
+    # Build system prompt with plan
+    system_prompt = SYSTEM_PROMPT
+    if search_plan:
+        system_prompt = f"""{SYSTEM_PROMPT}
+
+SEARCH PLAN (follow this plan to guide your search):
+{search_plan}
+
+Remember to follow the search plan above when deciding which tools to use and what to search for."""
+
     messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_question}
     ]
 
@@ -347,17 +424,17 @@ def run_agent(user_question: str, max_iterations: int = 5):
         if hasattr(response_message, 'reasoning') and response_message.reasoning:
             reasoning_text = response_message.reasoning
 
-            print(f"\n{'─'*80}")
+            print(f"\n{'-'*80}")
             print("AGENT'S THINKING:")
-            print(f"{'─'*80}")
+            print(f"{'-'*80}")
 
             if '<think>' in reasoning_text and '</think>' in reasoning_text:
                 thinking = reasoning_text.split('<think>')[1].split('</think>')[0].strip()
                 print(f"\n{thinking}\n")
-                print(f"{'─'*80}")
+                print(f"{'-'*80}")
             else:
                 print(f"\n{reasoning_text}\n")
-                print(f"{'─'*80}")
+                print(f"{'-'*80}")
 
         # Debug metadata
         print(f"\nResponse Metadata:")
@@ -425,25 +502,183 @@ def run_agent(user_question: str, max_iterations: int = 5):
 
 
 # ============================================================================
+# EVALUATION
+# ============================================================================
+
+def load_evaluation_data():
+    """Load evaluation dataset."""
+    eval_path = os.path.join(os.path.dirname(__file__), 'data', 'evaluation', 'docs_evaluation_dataset.json')
+    with open(eval_path, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+
+def llm_judge_answer(question: str, agent_answer: str, reference_answer: str) -> dict:
+    """Use LLM to judge the quality of agent's answer.
+
+    Args:
+        question: The original question
+        agent_answer: Agent's generated answer
+        reference_answer: Reference answer from dataset
+
+    Returns:
+        dict with score and reasoning
+    """
+    client = Config.get_client()
+
+    judge_prompt = f"""You are evaluating the quality of an AI agent's answer to a documentation question.
+
+Question: {question}
+
+Reference Answer (Ground Truth):
+{reference_answer}
+
+Agent's Answer:
+{agent_answer}
+
+Rate the agent's answer on a scale of 1-5 based on:
+- Accuracy: Is the information factually correct?
+- Completeness: Does it cover all key points from the reference?
+- Clarity: Is it well-structured and easy to understand?
+
+Respond in this format:
+Score: [1-5]
+Reasoning: [Brief explanation of the score]
+
+1 = Wrong/Incomplete
+2 = Partially correct but missing key information
+3 = Correct but could be more complete
+4 = Good answer, covers most points well
+5 = Excellent answer, comprehensive and accurate"""
+
+    response = client.chat.completions.create(
+        model=Config.MODEL_FREE,
+        messages=[{"role": "user", "content": judge_prompt}],
+        max_tokens=500
+    )
+
+    result = response.choices[0].message.content
+
+    # Parse score
+    score = 0
+    reasoning = result
+    if "Score:" in result:
+        try:
+            score_line = [line for line in result.split('\n') if 'Score:' in line][0]
+            score = int(score_line.split(':')[1].strip().split()[0])
+        except:
+            pass
+
+    return {
+        "score": score,
+        "reasoning": result
+    }
+
+
+def run_evaluation(num_questions=3, start_index=0):
+    """Run evaluation on questions from the dataset.
+
+    Args:
+        num_questions: Number of questions to evaluate
+        start_index: Starting index in the dataset
+    """
+    eval_data = load_evaluation_data()
+    questions = eval_data[start_index:start_index + num_questions]
+
+    print("=" * 80)
+    print(f"EVALUATION: Testing on {len(questions)} questions from dataset")
+    print("=" * 80)
+    print()
+
+    scores = []
+    total_iterations = 0
+    total_tokens = 0
+
+    for idx, qa in enumerate(questions, 1):
+        print(f"\n{'='*80}")
+        print(f"QUESTION {idx}/{len(questions)} (ID: {qa['id']})")
+        print(f"{'='*80}")
+        print(f"Q: {qa['question']}")
+        print(f"\nExpected chunks: {', '.join(qa['correct_chunks'])}")
+        print()
+
+        try:
+            answer = run_agent(qa['question'], max_iterations=15)
+
+            if answer:
+                # Use LLM to judge the answer
+                print(f"\n{'-'*80}")
+                print("JUDGING ANSWER QUALITY...")
+                print(f"{'-'*80}")
+
+                judgment = llm_judge_answer(qa['question'], answer, qa['correct_answer'])
+
+                print(f"\nLLM JUDGE SCORE: {judgment['score']}/5")
+                print(f"\n{judgment['reasoning']}")
+
+                print(f"\n{'-'*80}")
+                print("REFERENCE ANSWER:")
+                print(f"{'-'*80}")
+                print(qa['correct_answer'])
+
+                scores.append(judgment['score'])
+            else:
+                print("ERROR: No answer generated")
+                scores.append(0)
+
+        except Exception as e:
+            print(f"ERROR: {e}")
+            import traceback
+            traceback.print_exc()
+            scores.append(0)
+
+        print(f"\n{'='*80}\n")
+
+    # Print summary
+    print(f"\n{'='*80}")
+    print("EVALUATION SUMMARY")
+    print(f"{'='*80}")
+    print(f"Questions evaluated: {len(questions)}")
+    print(f"Average score: {sum(scores)/len(scores):.2f}/5.0" if scores else "N/A")
+    print(f"Score distribution:")
+    for score in range(1, 6):
+        count = scores.count(score)
+        print(f"  {score}/5: {count} questions")
+    print(f"{'='*80}")
+
+
+# ============================================================================
 # MAIN - TEST THE AGENT
 # ============================================================================
 
 def main():
-    """Test the agent with sample questions."""
-    print("Testing Documentation Search Agent (Level 1)")
+    """Test the agent with sample questions or run evaluation."""
+    import sys
+
+    print("Documentation Search Agent (Level 1.5 - With Planning)")
     print("=" * 80)
-    print("All tools implemented with real data from anthropic_docs.json")
+    print("Features:")
+    print("  - Planning phase before search (new!)")
+    print("  - 3 core tools: chunk_search, chunk_read, chunk_filter")
+    print("  - LLM-as-judge evaluation")
     print("=" * 80)
     print()
 
-    try:
-        # Test question
-        run_agent("How do I enable streaming in Claude API?",max_iterations=15)
-
-    except Exception as error:
-        print(f"Error: {error}")
-        import traceback
-        traceback.print_exc()
+    # Check command line arguments
+    if len(sys.argv) > 1 and sys.argv[1] == '--eval':
+        # Run evaluation mode
+        num_questions = int(sys.argv[2]) if len(sys.argv) > 2 else 3
+        run_evaluation(num_questions=num_questions)
+    else:
+        # Manual test mode
+        print("Manual test mode. Use --eval [N] to run on evaluation dataset.")
+        print()
+        try:
+            # Test with planning enabled
+            run_agent("How can you create multiple test cases for an evaluation in the Anthropic Evaluation tool?", max_iterations=15, use_planning=True)
+        except Exception as error:
+            print(f"Error: {error}")
+            import traceback
+            traceback.print_exc()
 
 
 if __name__ == "__main__":
