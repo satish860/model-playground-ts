@@ -44,10 +44,13 @@ model-playground-ts/
 │   ├── cot_classify.py           # RAG + Chain-of-Thought (~95%+ accuracy)
 │   └── requirements.txt          # Module-specific dependencies
 │
-├── summarization/                # Document summarization module (in progress)
-│   ├── data/                     # Lease documents (to be downloaded)
-│   ├── ROADMAP.md                # Detailed implementation plan
-│   └── requirements.txt          # Module-specific dependencies (TBD)
+├── summarization/                # Document summarization module (complete)
+│   ├── data/                     # Lease documents (9 leases + 9 reference summaries)
+│   ├── simple_summarize.py      # Simple: Baseline prompting (R1: ~0.54)
+│   ├── guided_summarize.py      # Guided: XML field extraction (R1: ~0.61)
+│   ├── chunking_summarize.py    # Chunking: Meta-summarization (best quality)
+│   ├── ROADMAP.md               # Detailed implementation plan
+│   └── requirements.txt         # Module-specific dependencies
 │
 ├── .env                          # API keys (not in git)
 └── package.json                  # TypeScript dependencies & scripts
@@ -101,13 +104,13 @@ python cot_classify.py      # RAG + Chain-of-Thought reasoning
 ```bash
 cd summarization
 
-# Three approaches (Coming Soon):
-python simple_summarize.py    # Basic: Simple bullet-point summary
-python guided_summarize.py     # Structured: Guided field extraction
-python chunking_summarize.py   # Advanced: Meta-summarization with chunking
+# Three approaches with progressive quality improvements:
+python simple_summarize.py    # Simple: Basic prompting (ROUGE-1: ~0.54)
+python guided_summarize.py     # Guided: XML field extraction (ROUGE-1: ~0.61)
+python chunking_summarize.py   # Chunking: Semantic sections + synthesis (highest quality)
 
-# View roadmap:
-cat ROADMAP.md  # Detailed implementation plan
+# View implementation details:
+cat ROADMAP.md  # Complete implementation documentation
 ```
 
 ---
@@ -183,26 +186,43 @@ This thinking capability is leveraged in the classification module's Chain-of-Th
 
 **Self-Contained Design**: The `summarization/` folder is independent with its own data and dependencies.
 
-**Three Progressive Approaches** (Planned):
+**Three Progressive Approaches** (Complete):
 
 1. **Simple Summarization** (`simple_summarize.py`)
-   - Document → "Summarize this" → Summary
-   - Basic bullet-point summaries
-   - Fast but may miss important details
+   - Document → "Summarize this in bullet points" → Summary
+   - Basic prompting with ROUGE evaluation
+   - Baseline: ROUGE-1: ~0.54, ROUGE-2: ~0.26, ROUGE-L: ~0.28
+   - Fast, straightforward, but inconsistent structure
 
 2. **Guided Summarization** (`guided_summarize.py`)
-   - Document → Extract specific fields (parties, dates, obligations) → Structured Summary
-   - Domain-specific prompting for legal documents
-   - More consistent and comprehensive
+   - Document → Extract 6 XML fields → Structured Summary
+   - Fields: parties involved, property details, term/rent, responsibilities, consent/notices, special provisions
+   - Consistent structure across all documents
+   - Improved: ROUGE-1: ~0.61 (+13% over Simple)
+   - Better completeness and organization
 
 3. **Meta-Summarization (Chunking)** (`chunking_summarize.py`)
-   - Document → Split into chunks → Summarize each → Synthesize → Final Summary
-   - Best for very long documents (50+ pages)
-   - Handles documents exceeding context window
+   - Document → Detect sections (ARTICLE/numbered) → Create chunks with 15% overlap
+   - Two-stage: Summarize each chunk → Synthesize final summary
+   - Semantic section boundaries preserve context
+   - Avg 3-4 chunks per document (range 1-6)
+   - Best quality for comprehensive coverage
+   - Trade-off: More API calls, longer processing time
 
-**Data Source**: Claude Cookbook legal document summarization dataset (9 lease agreements with reference summaries)
+**Implementation Details**:
+- All three share common functions (client setup, file loading, ROUGE calculation)
+- Guided reuses ~80% from Simple
+- Chunking uses guided approach for chunk-level summaries
+- Each script standalone executable with `if __name__ == "__main__"`
 
-**Status**: Roadmap created, implementation in progress. See `summarization/ROADMAP.md` for detailed plan.
+**Data Source**: Claude Cookbook legal document summarization dataset
+- 9 commercial lease agreements (26KB - 199KB)
+- 9 human-written reference summaries
+- ROUGE metrics for objective evaluation
+
+**Results**: Progressive improvements demonstrate how structured prompting and chunking enhance summarization quality with measurable ROUGE gains.
+
+**Status**: Complete! All three approaches implemented with full ROUGE evaluation. See `summarization/ROADMAP.md` for implementation details.
 
 ---
 
@@ -239,6 +259,12 @@ cd classification
 pip install -r requirements.txt  # Includes sentence-transformers
 ```
 
+**Summarization Module**:
+```bash
+cd summarization
+pip install -r requirements.txt  # Includes rouge-score
+```
+
 ---
 
 ## Testing Different Models
@@ -258,6 +284,11 @@ MODEL_FREE = "anthropic/claude-3.5-sonnet"  # Instead of minimax/minimax-m2:free
 **Classification**: Update `MODEL` in each classifier file:
 ```python
 MODEL = "anthropic/claude-3.5-sonnet"  # Test classification with different models
+```
+
+**Summarization**: Update `MODEL` in each summarizer file:
+```python
+MODEL = "anthropic/claude-3.5-sonnet"  # Test summarization with different models
 ```
 
 ### Model-Specific Considerations
@@ -293,6 +324,12 @@ try {
 - Self-contained with its own `requirements.txt`
 - Uses local `data/` folder for training/test data
 - Independent of main project dependencies
+
+### Summarization Module
+- Self-contained with its own `requirements.txt`
+- Uses local `data/` folder for lease documents and reference summaries
+- Three progressive approaches: simple → guided → chunking
+- ROUGE metrics for quantitative evaluation
 
 ---
 

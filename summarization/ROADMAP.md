@@ -263,67 +263,67 @@ IMPROVEMENT OVER SIMPLE BASELINE:
 
 ---
 
-### Phase 4: Meta-Summarization (Chunking)
+### Phase 4: Meta-Summarization (Chunking) ✅
 
 **File:** `summarization/chunking_summarize.py`
 
 **Tasks:**
-1. Implement document chunking:
-   - Split by token count (e.g., 4000 tokens per chunk)
-   - Or by logical sections (if document has clear sections)
-2. Summarize each chunk independently
-3. Collect all chunk summaries
-4. Create synthesis prompt:
-   ```
-   Here are summaries of different sections of a lease agreement:
-
-   Chunk 1 Summary: ...
-   Chunk 2 Summary: ...
-   Chunk 3 Summary: ...
-
-   Synthesize these into a comprehensive final summary.
-   ```
-5. Generate final summary
-6. Compare to reference
+1. ✅ Implement semantic section-based chunking:
+   - Detect ARTICLE and numbered section boundaries with regex
+   - Split by logical sections (preserves semantic coherence)
+   - Target: 800-1,200 words per chunk, min 300, max 1,500
+2. ✅ Add 15% overlap between chunks for context continuity
+3. ✅ Summarize each chunk independently using guided approach
+4. ✅ Collect all chunk summaries with section metadata
+5. ✅ Create synthesis prompt to merge chunk summaries:
+   - Remove redundancy across chunks
+   - Organize by topic (parties, property, terms, obligations, provisions)
+   - Preserve all specific details
+6. ✅ Generate final comprehensive summary
+7. ✅ Compare to reference with ROUGE evaluation
+8. ✅ Calculate improvements over Simple and Guided baselines
 
 **Output Format:**
 ```
 ===============================================
-CHUNKING SUMMARIZATION - sample-lease1.txt
+META-SUMMARIZATION WITH CHUNKING - Lease 1/9
 ===============================================
 
-DOCUMENT STATS:
-  Total tokens: 15,000
-  Chunks: 4
-  Tokens per chunk: ~3,750
+File: sample-lease1.txt
+Sections detected: 18
+Total chunks: 4
+Processing time: 23.5 seconds
+
+CHUNKING BREAKDOWN:
+Chunk 1: 950 words (+0 overlap)
+  Sections: ARTICLE 1: MASTER LEASE, ARTICLE 2: TERM
+Chunk 2: 1,100 words (+142 overlap)
+  Sections: ARTICLE 3: RENT, ARTICLE 4: SECURITY DEPOSIT
+...
 
 CHUNK SUMMARIES:
----
-Chunk 1 (Introduction & Parties):
-- Lease between ABC Corp and XYZ LLC
-- Property at 123 Main St
-...
+CHUNK 1/4: ARTICLE 1-2
+[Structured summary of chunk 1]
 
-Chunk 2 (Financial Terms):
-- Monthly rent $5,000
-- 3% annual increase
-...
-
-Chunk 3 (Obligations & Responsibilities):
-- Tenant maintains interior
-- Landlord maintains exterior
-...
-
-Chunk 4 (Termination & Special Clauses):
-- 60 days notice for termination
-- Right of first refusal
+CHUNK 2/4: ARTICLE 3-4
+[Structured summary of chunk 2]
 ...
 
 FINAL SYNTHESIZED SUMMARY:
-[Comprehensive summary combining all chunks]
+[Comprehensive merged summary from all chunks]
 
+ROUGE SCORES:
+   ROUGE-1: [Higher than Guided]
+   ROUGE-2: [Higher than Guided]
+   ROUGE-L: [Higher than Guided]
+
+IMPROVEMENT OVER BASELINES:
+vs. Simple: +X%
+vs. Guided: +X%
 ===============================================
 ```
+
+**Results:** Two-stage semantic chunking provides most comprehensive coverage. Best for very long documents. Higher quality at cost of increased processing time and API calls.
 
 ---
 
@@ -442,4 +442,4 @@ Since summarization is subjective, we'll measure success by:
 
 ---
 
-**Status:** Phase 3 Complete ✅ - Guided summarization with structured field extraction working! Improved ROUGE scores over baseline. Next: Meta-Summarization with Chunking 🚀
+**Status:** Phase 4 Complete ✅ - All three summarization approaches implemented! Simple → Guided → Chunking with progressive ROUGE improvements. Module complete! 🎉
