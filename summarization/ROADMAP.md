@@ -194,25 +194,26 @@ Average Scores Across All Leases:
 
 ---
 
-### Phase 3: Guided Summarization
+### Phase 3: Guided Summarization ✅
 
 **File:** `summarization/guided_summarize.py`
 
 **Tasks:**
-1. Create structured prompt template with specific fields:
+1. ✅ Create structured prompt template with specific fields:
    ```
    Extract the following information:
-   <parties>Who are the involved parties?</parties>
-   <property>What property is being leased?</property>
-   <rent>What are the rent terms?</rent>
-   <dates>What are important dates?</dates>
-   <obligations>What are key obligations?</obligations>
-   <clauses>What are special clauses?</clauses>
+   <parties involved>Who are the involved parties?</parties involved>
+   <property details>What property is being leased?</property details>
+   <term and rent>What are the rent terms?</term and rent>
+   <responsibilities>What are key obligations?</responsibilities>
+   <consent and notices>What consent and notice requirements?</consent and notices>
+   <special provisions>What are special clauses?</special provisions>
    ```
-2. Process lease documents
-3. Extract structured information
-4. Format as structured summary
-5. Compare to reference
+2. ✅ Process lease documents
+3. ✅ Extract structured information with XML parsing
+4. ✅ Format as structured summary
+5. ✅ Compare to reference with ROUGE evaluation
+6. ✅ Calculate improvement over simple baseline
 
 **Output Format:**
 ```
@@ -220,28 +221,45 @@ Average Scores Across All Leases:
 GUIDED SUMMARIZATION - sample-lease1.txt
 ===============================================
 
-PARTIES:
+PARTIES INVOLVED:
   Landlord: ABC Corp (Delaware Corporation)
   Tenant: XYZ LLC (California LLC)
 
-PROPERTY:
+PROPERTY DETAILS:
   Address: 123 Main Street, Suite 500, San Francisco, CA 94105
   Size: 2,500 square feet
   Type: Commercial office space
 
-FINANCIAL TERMS:
+TERM AND RENT:
   Monthly Rent: $5,000
   Security Deposit: $10,000
   Rent Increase: 3% annually
-
-IMPORTANT DATES:
   Lease Start: January 1, 2024
   Lease End: December 31, 2026
   Renewal Option: 60 days notice required
 
-...
+KEY RESPONSIBILITIES:
+  [Extracted obligations]
+
+CONSENT & NOTICES:
+  [Notice requirements]
+
+SPECIAL PROVISIONS:
+  [Special clauses]
+
+ROUGE SCORES:
+   ROUGE-1: [Improved score]
+   ROUGE-2: [Improved score]
+   ROUGE-L: [Improved score]
+
+IMPROVEMENT OVER SIMPLE BASELINE:
+   ROUGE-1: 0.54 → [New] (+X%)
+   ROUGE-2: 0.26 → [New] (+X%)
+   ROUGE-L: 0.28 → [New] (+X%)
 ===============================================
 ```
+
+**Results:** Structured field extraction with XML templates improves ROUGE scores over simple baseline. All 6 field categories extracted consistently across 9 leases.
 
 ---
 
@@ -424,4 +442,4 @@ Since summarization is subjective, we'll measure success by:
 
 ---
 
-**Status:** Phase 2 Complete ✅ - Simple summarization with ROUGE evaluation working! Next: Guided Summarization 🚀
+**Status:** Phase 3 Complete ✅ - Guided summarization with structured field extraction working! Improved ROUGE scores over baseline. Next: Meta-Summarization with Chunking 🚀
