@@ -1,0 +1,11 @@
+# Summarization Module Dependencies
+
+# Core dependencies
+openai>=1.0.0
+python-dotenv>=1.0.0
+
+# Optional: For PDF processing if needed in future
+# pypdf>=3.0.0
+
+# For ROUGE evaluation
+rouge-score>=0.1.2

@@ -124,39 +124,40 @@ Long Document
 
 ## 🗺️ Implementation Roadmap
 
-### Phase 1: Setup & Data Download ✅ (Current)
+### Phase 1: Setup & Data Download ✅
 
 **Tasks:**
 1. ✅ Create `summarization/` folder
 2. ✅ Create `summarization/data/` subfolder
-3. ⏳ Download 21 files from Claude Cookbook:
+3. ✅ Download 21 files from Claude Cookbook:
    - 1 PDF: `Sample Sublease Agreement.pdf`
    - 18 TXT files: `sample-lease{1-9}.txt` + `sample-lease{1-9}-summary.txt`
    - 1 CSV: `results.csv`
    - 1 Python script: `multiple_subleases.py`
-4. ⏳ Create `requirements.txt` with dependencies
+4. ✅ Create `requirements.txt` with dependencies
 
 **Dependencies:**
 ```
 openai>=1.0.0
 python-dotenv>=1.0.0
-pypdf>=3.0.0          # For PDF extraction if needed
+rouge-score>=0.1.2    # For ROUGE evaluation
 ```
 
 ---
 
-### Phase 2: Simple Summarization
+### Phase 2: Simple Summarization ✅
 
 **File:** `summarization/simple_summarize.py`
 
 **Tasks:**
-1. Load one sample lease document (e.g., `sample-lease1.txt`)
-2. Create basic prompt: "Summarize this lease agreement in bullet points"
-3. Use MiniMax M2 free model to generate summary
-4. Display generated summary
-5. Load reference summary (`sample-lease1-summary.txt`)
-6. Display reference summary for comparison
-7. Run on all 9 leases
+1. ✅ Load one sample lease document (e.g., `sample-lease1.txt`)
+2. ✅ Create basic prompt: "Summarize this lease agreement in bullet points"
+3. ✅ Use MiniMax M2 free model to generate summary
+4. ✅ Display generated summary
+5. ✅ Load reference summary (`sample-lease1-summary.txt`)
+6. ✅ Display reference summary for comparison
+7. ✅ Run on all 9 leases
+8. ✅ **BONUS:** Added ROUGE evaluation with scores and statistics
 
 **Output Format:**
 ```
@@ -174,8 +175,22 @@ GENERATED SUMMARY:
 REFERENCE SUMMARY:
 [Human-written summary for comparison]
 
+ROUGE SCORES:
+   ROUGE-1: 0.5376  (word overlap)
+   ROUGE-2: 0.2572  (phrase overlap)
+   ROUGE-L: 0.2765  (sentence structure)
+
 ===============================================
+
+EVALUATION SUMMARY - ROUGE SCORES
+===============================================
+Average Scores Across All Leases:
+   ROUGE-1: 0.54 ± 0.08
+   ROUGE-2: 0.26 ± 0.11
+   ROUGE-L: 0.28 ± 0.09
 ```
+
+**Baseline Results:** ROUGE-1: ~0.54, ROUGE-2: ~0.26, ROUGE-L: ~0.28
 
 ---
 
@@ -409,4 +424,4 @@ Since summarization is subjective, we'll measure success by:
 
 ---
 
-**Status:** Phase 1 - Ready to download data and start building! 🚀
+**Status:** Phase 2 Complete ✅ - Simple summarization with ROUGE evaluation working! Next: Guided Summarization 🚀
