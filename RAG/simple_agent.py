@@ -453,12 +453,13 @@ Reasoning: [Brief explanation of the score]
     }
 
 
-def run_evaluation(num_questions=3, start_index=0):
+def run_evaluation(num_questions=3, start_index=0, save_results=True):
     """Run evaluation on questions from the dataset.
 
     Args:
         num_questions: Number of questions to evaluate
         start_index: Starting index in the dataset
+        save_results: Whether to save detailed results to file
     """
     eval_data = load_evaluation_data()
     questions = eval_data[start_index:start_index + num_questions]
@@ -469,6 +470,7 @@ def run_evaluation(num_questions=3, start_index=0):
     print()
 
     scores = []
+    results_detail = []
     total_iterations = 0
     total_tokens = 0
 
@@ -500,15 +502,38 @@ def run_evaluation(num_questions=3, start_index=0):
                 print(qa['correct_answer'])
 
                 scores.append(judgment['score'])
+
+                # Save detailed result
+                results_detail.append({
+                    'id': qa['id'],
+                    'question': qa['question'],
+                    'score': judgment['score'],
+                    'reasoning': judgment['reasoning'],
+                    'agent_answer': answer,
+                    'reference_answer': qa['correct_answer'],
+                    'expected_chunks': qa['correct_chunks']
+                })
             else:
                 print("ERROR: No answer generated")
                 scores.append(0)
+                results_detail.append({
+                    'id': qa['id'],
+                    'question': qa['question'],
+                    'score': 0,
+                    'error': 'No answer generated'
+                })
 
         except Exception as e:
             print(f"ERROR: {e}")
             import traceback
             traceback.print_exc()
             scores.append(0)
+            results_detail.append({
+                'id': qa['id'],
+                'question': qa['question'],
+                'score': 0,
+                'error': str(e)
+            })
 
         print(f"\n{'='*80}\n")
 
@@ -519,10 +544,27 @@ def run_evaluation(num_questions=3, start_index=0):
     print(f"Questions evaluated: {len(questions)}")
     print(f"Average score: {sum(scores)/len(scores):.2f}/5.0" if scores else "N/A")
     print(f"Score distribution:")
-    for score in range(1, 6):
+    for score in range(0, 6):
         count = scores.count(score)
-        print(f"  {score}/5: {count} questions")
+        percentage = (count / len(scores) * 100) if scores else 0
+        print(f"  {score}/5: {count} questions ({percentage:.1f}%)")
     print(f"{'='*80}")
+
+    # Save results
+    if save_results:
+        results_file = os.path.join(os.path.dirname(__file__), f'evaluation_results_{num_questions}q.json')
+        with open(results_file, 'w', encoding='utf-8') as f:
+            json.dump({
+                'summary': {
+                    'total_questions': len(questions),
+                    'average_score': sum(scores)/len(scores) if scores else 0,
+                    'score_distribution': {str(i): scores.count(i) for i in range(0, 6)}
+                },
+                'results': results_detail
+            }, f, indent=2)
+        print(f"\nResults saved to: {results_file}")
+
+    return scores
 
 
 # ============================================================================
