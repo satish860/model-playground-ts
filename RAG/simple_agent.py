@@ -262,8 +262,20 @@ Now create a plan for the given question:"""
         max_tokens=300
     )
 
-    plan = response.choices[0].message.content
-    return plan
+    response_message = response.choices[0].message
+
+    # MiniMax M2 special handling: check reasoning field
+    plan = response_message.content
+    if not plan and hasattr(response_message, 'reasoning') and response_message.reasoning:
+        # Extract plan from reasoning field
+        reasoning_text = response_message.reasoning
+        if '</think>' in reasoning_text:
+            # Get text after </think> tag
+            plan = reasoning_text.split('</think>')[-1].strip()
+        else:
+            plan = reasoning_text
+
+    return plan if plan else "No plan generated"
 
 
 # ============================================================================
