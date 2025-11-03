@@ -156,26 +156,40 @@ SYSTEM_PROMPT = """You are a helpful documentation search assistant.
 Your task: Answer questions about Claude documentation using the available tools.
 
 Tools:
-- chunk_grep: Grep-style search for exact phrases or regex patterns
-  * Use for specific terms, product names, UI elements (e.g., "Add Test Case", "eval-tool")
-  * Supports quotes for exact matches: "exact phrase"
-  * Supports regex: eval.*tool
-  * Best for precise searches
+- chunk_grep: Grep-style search for exact phrases or regex patterns (PREFER THIS FOR PRECISION!)
+  * Use quotes for exact phrases: chunk_grep('"Add Test Case"')
+  * Use for product names: chunk_grep('"Anthropic Evaluation tool"')
+  * Use for UI elements: chunk_grep('"button"'), chunk_grep('"screen"')
+  * Use for features: chunk_grep('"streaming"')
+  * Supports regex: chunk_grep('eval.*tool')
 
-- chunk_search: Keyword search (splits query into words)
-  * Use for broad exploratory searches
-  * Good when you're not sure of exact terms
+- chunk_search: Keyword search (splits into words)
+  * Only use for exploratory searches when you don't know exact terms
+  * Less precise than grep
 
 - chunk_read: Read full content of specific chunks (use IDs from search)
 - chunk_filter: Filter chunks by heading/link patterns
 
-Strategy:
-1. If question mentions specific product names, UI elements, or quoted terms → use chunk_grep
-2. For broad concept searches → use chunk_search
-3. Read the most promising chunks (based on match scores and snippets)
-4. Provide a clear answer with source citations
+Strategy - IMPORTANT:
+1. ALWAYS START WITH GREP for any specific terms:
+   - Question mentions "test cases"? → chunk_grep('"test cases"')
+   - Question mentions "evaluation tool"? → chunk_grep('"evaluation tool"')
+   - Question mentions button/screen? → chunk_grep('"button"') or chunk_grep('"screen"')
 
-Always cite your sources using chunk links from the documentation.
+2. Examples of CORRECT grep usage:
+   Q: "How to create test cases?"
+   → chunk_grep('"test cases"')  ✓ NOT chunk_search("test cases") ✗
+
+   Q: "What is the Evaluation tool?"
+   → chunk_grep('"Evaluation tool"')  ✓ NOT chunk_search("Evaluation tool") ✗
+
+3. Only use chunk_search for vague/exploratory queries
+
+4. Read the top-scoring chunks (grep gives better scores for exact matches)
+
+5. Always cite sources with chunk links
+
+REMEMBER: Grep with quotes finds exact phrases. Use it!
 """
 
 
@@ -204,23 +218,41 @@ def create_plan(user_question: str) -> str:
 
 Question: {user_question}
 
-Analyze this question and create a search plan. Consider:
-1. What is the user really asking? (e.g., UI walkthrough, API code, conceptual explanation, tutorial steps)
-2. What are the EXACT key phrases to search for? (extract important quoted terms, product names, feature names)
-3. Which documentation sections are most relevant? (e.g., "API reference", "tutorials", "eval-tool", "test-and-evaluate")
-4. Are there specific UI elements mentioned (buttons, forms, screens)?
+Create a search plan that extracts EXACT PHRASES to search with grep.
+
+IMPORTANT: Identify specific terms that should be searched with exact phrase matching using quotes.
+
+Analyze:
+1. What EXACT PHRASES are mentioned? (product names, features, UI elements)
+   - Extract 2-3 key phrases that should be searched exactly
+   - These will be used with chunk_grep('"exact phrase"')
+
+2. What type of answer is needed?
+   - UI instructions (buttons, screens)
+   - API code examples
+   - Conceptual explanation
+   - Configuration steps
+
+3. Which documentation section? (api-reference, test-and-evaluate, build-with-claude, etc.)
 
 Provide a search plan with:
+- Grep Terms: List 2-3 exact phrases to search (e.g., ["Add Test Case", "Evaluation tool"])
 - Intent: What type of answer is needed
-- Key search terms: 2-3 specific phrases to search for
-- Target section: Which docs section to focus on
+- Target Section: Which docs to focus on
 
-Example:
+Example 1:
 Question: "How do I enable streaming in Claude API?"
 Plan:
-- Intent: API implementation method/code example
-- Key search terms: "streaming", "stream parameter", "API"
-- Target: API reference documentation
+- Grep Terms: ["streaming", "stream parameter"]
+- Intent: API code example
+- Target Section: API reference
+
+Example 2:
+Question: "How to create test cases in the Evaluation tool?"
+Plan:
+- Grep Terms: ["test cases", "Evaluation tool", "Add Test Case"]
+- Intent: UI instructions
+- Target Section: test-and-evaluate
 
 Now create a plan for the given question:"""
 
@@ -275,10 +307,13 @@ def run_agent(user_question: str, max_iterations: int = 5, use_planning: bool = 
     if search_plan:
         system_prompt = f"""{SYSTEM_PROMPT}
 
-SEARCH PLAN (follow this plan to guide your search):
+SEARCH PLAN FOR THIS QUESTION:
 {search_plan}
 
-Remember to follow the search plan above when deciding which tools to use and what to search for."""
+CRITICAL: If the plan lists "Grep Terms", you MUST use chunk_grep with quotes for those exact phrases!
+Example: If plan says 'Grep Terms: ["test cases"]' → Use chunk_grep('"test cases"') as your FIRST search.
+
+Follow the search plan above when deciding which tools to use."""
 
     messages = [
         {"role": "system", "content": system_prompt},
