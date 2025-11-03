@@ -189,7 +189,13 @@ Strategy - IMPORTANT:
 
 5. Always cite sources with chunk links
 
-REMEMBER: Grep with quotes finds exact phrases. Use it!
+6. **Know when to stop** - CRITICAL:
+   - If after 3-4 searches you haven't found relevant docs, the information may not exist
+   - Don't keep searching indefinitely with different terms
+   - After reasonable attempts, respond: "This information is not available in the Claude documentation I have access to."
+   - It's better to admit uncertainty than to keep searching forever
+
+REMEMBER: Grep with quotes finds exact phrases. Use it! But stop if docs don't exist.
 """
 
 
@@ -530,7 +536,7 @@ def run_evaluation(num_questions=3, start_index=0, save_results=True):
         print()
 
         try:
-            answer = run_agent(qa['question'], max_iterations=15)
+            answer = run_agent(qa['question'], max_iterations=10)
 
             if answer:
                 # Use LLM to judge the answer
